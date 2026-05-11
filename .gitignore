@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.DS_Store
+.streamlit/
+.env
+venv/
+env/
+# Cleaned_Wuzzuf_Jobs.csv # Optional: if you want to keep data local, but Streamlit needs it if not using kagglehub
