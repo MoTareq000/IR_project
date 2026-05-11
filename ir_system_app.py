@@ -228,36 +228,63 @@ def _precision_recall_f1(retrieved_set, relevant_set):
     f1 = 2 * p * r / (p + r) if (p + r) else 0.0
     return round(p, 4), round(r, 4), round(f1, 4), tp
 
-def get_relevant_docs(df, department="All", experience="All", employment_type="All",
-                      work_mode="All", governorate="All", min_match_fraction=0.5):
+def get_relevant_docs(
+    df,
+    query="",
+    department="All",
+    experience="All",
+    employment_type="All",
+    work_mode="All",
+    governorate="All",
+    min_match_fraction=0.5
+):
 
     filters = {
-        "department": department, "experience": experience,
-        "employment_type": employment_type, "work_mode": work_mode,
+        "department": department,
+        "experience": experience,
+        "employment_type": employment_type,
+        "work_mode": work_mode,
         "governorate": governorate,
     }
+
     active = {col: val for col, val in filters.items() if val != "All"}
-    n_active = len(active)
 
-    if n_active == 0:
-        return set(df.index.tolist())
+    # start with all docs
+    relevant_mask = pd.Series(True, index=df.index)
 
-    match_score = pd.Series(0, index=df.index)
+    # apply dropdown filters
     for col, val in active.items():
-        match_score += (df[col] == val).astype(int)
+        relevant_mask &= (df[col] == val)
 
-    min_matches = max(1, math.ceil(min_match_fraction * n_active))
-    return set(df[match_score >= min_matches].index.tolist())
+    # apply query relevance
+    if query.strip():
+
+        lemmatizer = get_lemmatizer()
+        stop_words = get_stop_words()
+
+        query_tokens = set(preprocess(query, lemmatizer, stop_words))
+
+        def has_query_match(tokens):
+            return len(query_tokens.intersection(set(tokens))) > 0
+
+        relevant_mask &= df["tokens"].apply(has_query_match)
+
+    return set(df[relevant_mask].index.tolist())
 
 def evaluate_query(df, inv_idx, doc_freq, N,
                    query="", department="All", experience="All",
                    employment_type="All", work_mode="All", governorate="All",
                    k=20, threshold_ratio=0.2, min_match_fraction=0.5) -> dict:
     relevant = get_relevant_docs(
-        df, department=department, experience=experience,
-        employment_type=employment_type, work_mode=work_mode,
-        governorate=governorate, min_match_fraction=min_match_fraction,
-    )
+    df,
+    query=query,
+    department=department,
+    experience=experience,
+    employment_type=employment_type,
+    work_mode=work_mode,
+    governorate=governorate,
+    min_match_fraction=min_match_fraction,
+)
     results_df = search(
         df, inv_idx, doc_freq, N,
         query=query, department=department, experience=experience,
@@ -423,12 +450,13 @@ def main():
                     st.markdown("#### Retrieved Results with Relevance")
 
                     relevant = get_relevant_docs(
-                        df,
-                        department=params["department"],
-                        experience=params["experience"],
-                        employment_type=params["employment_type"],
-                        work_mode=params["work_mode"],
-                        governorate=params["governorate"],
+                      df,
+                      query=params["query"],
+                      department=params["department"],
+                      experience=params["experience"],
+                      employment_type=params["employment_type"],
+                      work_mode=params["work_mode"],
+                      governorate=params["governorate"],
                     )
 
                     rows = []
