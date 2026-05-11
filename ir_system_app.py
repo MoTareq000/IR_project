@@ -95,8 +95,13 @@ def _parse_governorate(loc: str) -> str:
 
 @st.cache_data
 def load_data() -> pd.DataFrame:
-    path = kagglehub.dataset_download("ahmedhazemelabady/wuzzuf-job-listings-dataset-egypt-january-2025")
-    df_raw = pd.read_csv(path + "/Cleaned_Wuzzuf_Jobs.csv")
+    import os
+    local_file = "Cleaned_Wuzzuf_Jobs.csv"
+    if os.path.exists(local_file):
+        df_raw = pd.read_csv(local_file)
+    else:
+        path = kagglehub.dataset_download("ahmedhazemelabady/wuzzuf-job-listings-dataset-egypt-january-2025")
+        df_raw = pd.read_csv(path + "/Cleaned_Wuzzuf_Jobs.csv")
     df = df_raw.copy()
     df["employment_type"] = df["type"].apply(_parse_employment_type)
     df["work_mode"]       = df["type"].apply(_parse_work_mode)
